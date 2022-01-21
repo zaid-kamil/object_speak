@@ -1,2 +1,5 @@
 opencv-contib-python
 numpy
+pyttsx3
+pypiwin32
+pyshine
