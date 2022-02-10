@@ -4,8 +4,41 @@ from speak_object import TTSThread
 from color_detector import getColorName
 import queue
 
+
+# create function to seperated foreground and background from image
+def seperate_foreground_background(image):
+    # convert image to gray scale
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    # blur the image
+    blur = cv2.GaussianBlur(gray, (5, 5), 0)
+    # apply threshold
+    ret, thresh = cv2.threshold(blur, 127, 255, cv2.THRESH_BINARY_INV)
+    # find contours
+    contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    # create empty array to store foreground and background
+    foreground = np.zeros(image.shape, np.uint8)
+    background = np.zeros(image.shape, np.uint8)
+    # loop over contours
+    for cnt in contours:
+        # get area of contour
+        area = cv2.contourArea(cnt)
+        # if area is greater than 50 pixels, it will be considered as foreground
+        if area > 50:
+            cv2.drawContours(foreground, [cnt], 0, (255, 255, 255), -1)
+        else:
+            cv2.drawContours(background, [cnt], 0, (255, 255, 255), -1)
+    return foreground, background
+
+# crop image by mask
+def crop_image(im, mask):
+    final =  cv2.bitwise_and(im, mask)
+    return final
+
+
+
 q = queue.Queue()
 tts_thread = TTSThread(q)
+
 # print("1. Setting up the TTS engine...")
 
 object_counter = []
@@ -60,6 +93,9 @@ while True:
             x,y,w,h = box[0],box[1],box[2],box[3]
             cv2.rectangle(img, (x,y),(x+w,h+y), color=(255, 255, 0), thickness=4)
             crop_img = img[y:y+h, x:x+w]
+            cv2.imshow(item,crop_img)
+            mask,_ = seperate_foreground_background(crop_img)
+            crop_img  = crop_image(crop_img,mask)       
             mean_red = np.mean(crop_img[:,:,2])
             mean_green = np.mean(crop_img[:,:,1])
             mean_blue = np.mean(crop_img[:,:,0])
@@ -67,7 +103,6 @@ while True:
             item = classNames[classIds[i][0]-1].upper()
 
             cv2.putText(img,f"{color} {item}",(box[0]+10,box[1]+30),cv2.FONT_HERSHEY_COMPLEX,1,(0,255,0),3)
-            cv2.imshow("item",crop_img)
             text = f'{item} detected of color {color}'
             if item not in object_counter:
                 q.put(text)
