@@ -1,4 +1,4 @@
-opencv-contib-python
+opencv-contrib-python
 numpy
 pyttsx3
 pypiwin32
